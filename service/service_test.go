@@ -6,7 +6,6 @@ import (
 	serviceMock "assessment/service/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"log"
 	"testing"
 )
 
@@ -35,7 +34,6 @@ func TestNumberService_FetchPhoneNumbers(t *testing.T) {
 	require.NoError(t, err, "Expected No Errors\nGot: %v\n", err)
 
 	for _, d := range result.Data {
-		log.Println(d)
 		require.Equal(t, "OK", d.State)
 	}
 
