@@ -49,14 +49,14 @@ func (s *NumberService) FetchPhoneNumbers(page, limit string) (model.Result, err
 		return model.Result{}, apperror.ServerError
 	}
 
-	if len(result) == 0 {
+	/*if len(result) == 0 {
 		return model.Result{}, apperror.NotFound
-	}
+	}*/
 
 	var meta model.Meta
 
 	if len(result) == lim+1 {
-		result = result[:len(result)-1]
+		result = result[:lim]
 		meta.Next = true
 	}
 
@@ -129,66 +129,78 @@ func (s *NumberService) FilterByCountryAndState(country, state, page, limit stri
 	}
 
 	var (
-		data    []model.Data
-		meta    model.Meta
-		numbers []string
+		data        []model.Data
+		meta        model.Meta
+		numbers     []string
+		next        bool
+		currentPage int = 1
 	)
 	lim, err := strconv.Atoi(limit)
-	off, _ := strconv.Atoi(page)
-	off = lim*off - lim
+	p, _ := strconv.Atoi(page)
+	offset := 0
 
 	if err != nil {
 		return model.Result{}, apperror.BadRequest
 	}
-	for len(data) <= lim {
-		numbers, err = s.repository.FetchPaginatedPhoneNumbersByCode(code, off, lim+1)
 
-		if err != nil {
-			if err == apperror.NotFound {
+	/*Fetching paginated data from the database based on status is a bit more complex because that data is non-contiguous. e.g:
+		1. OK
+		2. NOK
+		3. NOK
+		4. OK
+		5. NOK
+		6. OK
+		7. OK
+		8. NOK
+
+	Fetching page 1 of phone numbers which are nok with a limit of 3 puts the final offset for page 1 on number 5 because that's where the third NOK number is.
+
+	In order to fetch page 2, the offset will need to start from number 6 in order to prevent number 5 from entering the result set.
+
+	What this function does is to start from page 1 up to page n and try to calculate the start offset to use for page n since it's not really deterministic.
+
+	This block runs in 0(N^2) Time
+	*/
+	for currentPage <= p {
+		data = nil
+		for len(data) < lim {
+			numbers, err = s.repository.FetchPaginatedPhoneNumbersByCode(code, offset, lim+1)
+
+			if err != nil {
+				log.Println(err)
+				return model.Result{}, apperror.ServerError
+			}
+
+			if len(numbers) == 0 {
 				break
 			}
-			log.Println(err)
-			return model.Result{}, apperror.ServerError
-		}
 
-		if len(numbers) == 0 {
-			return model.Result{
-				Data: data,
-				Meta: model.Meta{
-					Next:        false,
-					Prev:        false,
-					CurrentPage: page,
-				},
-			}, nil
-		}
-
-		if len(numbers) == lim+1 {
-			numbers = numbers[:len(numbers)-1]
-		}
-
-		for _, number := range numbers {
-			country, code, number, valid := s.validator.Validate(number)
-			if (state == "OK" && valid) || (state == "NOK" && !valid) {
-				data = append(data, model.Data{
-					Country:     country,
-					CountryCode: code,
-					PhoneNumber: number,
-					State:       state,
-				})
+			if len(numbers) == lim+1 {
+				next = true
+				numbers = numbers[:len(numbers)-1]
+			} else {
+				next = false
 			}
+
+			for _, number := range numbers {
+				country, code, number, valid := s.validator.Validate(number)
+				if (state == "OK" && valid) || (state == "NOK" && !valid) {
+					data = append(data, model.Data{
+						Country:     country,
+						CountryCode: code,
+						PhoneNumber: number,
+						State:       state,
+					})
+				}
+			}
+			offset += lim
 		}
-		off += lim
+		currentPage++
 	}
 
-	if len(data) == 0 {
-		return model.Result{}, apperror.NotFound
-	}
+	meta.Next = next
 
-	if len(numbers) == lim+1 {
-		meta.Next = true
-	}
-
-	if off >= lim {
+	if (p*lim - lim) >= lim {
 		meta.Prev = true
 	}
 
