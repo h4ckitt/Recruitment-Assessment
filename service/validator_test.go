@@ -125,4 +125,10 @@ func TestValidator_Validate(t *testing.T) {
 		require.Equal(t, expected[index].CountryCode, code)
 		require.Equal(t, expected[index].PhoneNumber, number)
 	}
+
+	name, code, number, valid := v.Validate("(2194) 698054317bdxgvs")
+	require.Empty(t, name)
+	require.Empty(t, code)
+	require.Empty(t, number)
+	require.False(t, valid)
 }
