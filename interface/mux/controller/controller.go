@@ -18,12 +18,12 @@ func (controller *Controller) FetchAllPhoneNumbers(w http.ResponseWriter, r *htt
 	queries := r.URL.Query()
 
 	limit := queries.Get("limit")
-	offset := queries.Get("page")
+	page := queries.Get("page")
 	country := queries.Get("country")
 	state := queries.Get("state")
 
 	if country == "" && state == "" {
-		result, err := controller.numberService.FetchPhoneNumbers(offset, limit)
+		result, err := controller.numberService.FetchPhoneNumbers(page, limit)
 
 		if err != nil {
 			helper.ReturnFailure(w, err)
@@ -32,7 +32,7 @@ func (controller *Controller) FetchAllPhoneNumbers(w http.ResponseWriter, r *htt
 
 		helper.ReturnSuccess(w, result)
 	} else {
-		result, err := controller.numberService.FilterByCountryAndState(country, state, offset, limit)
+		result, err := controller.numberService.FilterByCountryAndState(country, state, page, limit)
 
 		if err != nil {
 			helper.ReturnFailure(w, err)
