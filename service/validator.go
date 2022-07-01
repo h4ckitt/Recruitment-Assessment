@@ -51,10 +51,6 @@ func (v *Validator) Validate(phone string) (string, string, string, bool) {
 
 				subMatch := subMatches[0]
 
-				if len(subMatch) < 2 {
-					return country.name, "", "", false
-				}
-
 				return country.name, fmt.Sprintf("+%s", subMatch[1]), subMatch[2], true
 			}
 
@@ -77,7 +73,7 @@ func (v *Validator) GetCodeFromCountry(name string) (string, error) {
 	return "", apperror.NotFound
 }
 
-func (v *Validator) GetCountryFromCode(code string) (string, error) {
+/*func (v *Validator) GetCountryFromCode(code string) (string, error) {
 	for country := range v.CountryAndRegex {
 		if country.code == code {
 			return country.name, nil
@@ -85,4 +81,4 @@ func (v *Validator) GetCountryFromCode(code string) (string, error) {
 	}
 
 	return "", apperror.NotFound
-}
+}*/
