@@ -49,9 +49,6 @@ func (repo *Repo) FetchPaginatedPhoneNumbers(offset, limit int) ([]string, error
 		var phone string
 
 		if err := rows.Scan(&phone); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				err = nil
-			}
 			return nil, err
 		}
 
