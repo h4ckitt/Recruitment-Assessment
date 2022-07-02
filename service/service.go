@@ -6,7 +6,6 @@ import (
 	"assessment/repository"
 	"log"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -17,6 +16,9 @@ type NumberService struct {
 	repository repository.PhoneNumberRepository
 }
 
+/*NewNumberService : This starts a new service which handles the business logic of returning
+phone numbers with the specified criteria
+*/
 func NewNumberService(validator NumberValidator, repository repository.PhoneNumberRepository) *NumberService {
 	return &NumberService{
 		validator:  validator,
@@ -24,21 +26,15 @@ func NewNumberService(validator NumberValidator, repository repository.PhoneNumb
 	}
 }
 
+/*FetchPhoneNumbers : Fetches all the phone numbers in the database
+Returns a paginated list of all phone numbers in the database.
+*/
 func (s *NumberService) FetchPhoneNumbers(page, limit string) (model.Result, error) {
-	if page == "" {
-		page = "1"
-	}
+	off, lim, err := validateParams("", page, limit)
 
-	if limit == "" || limit == "0" {
-		limit = "10"
-	}
-
-	if !numberRegex.MatchString(limit) || !numberRegex.MatchString(page) {
+	if err != nil {
 		return model.Result{}, apperror.BadRequest
 	}
-
-	off, _ := strconv.Atoi(page)
-	lim, _ := strconv.Atoi(limit)
 
 	off = lim*off - lim
 
@@ -48,10 +44,6 @@ func (s *NumberService) FetchPhoneNumbers(page, limit string) (model.Result, err
 		log.Println(err)
 		return model.Result{}, apperror.ServerError
 	}
-
-	/*if len(result) == 0 {
-		return model.Result{}, apperror.NotFound
-	}*/
 
 	var meta model.Meta
 
@@ -86,6 +78,11 @@ func (s *NumberService) FetchPhoneNumbers(page, limit string) (model.Result, err
 		})
 	}
 
+	if len(data) == 0 {
+		meta.Next = false
+		meta.Prev = false
+	}
+
 	finalResult := model.Result{
 		Data: data,
 		Meta: meta,
@@ -94,54 +91,26 @@ func (s *NumberService) FetchPhoneNumbers(page, limit string) (model.Result, err
 	return finalResult, nil
 }
 
-func (s *NumberService) FilterByCountryAndState(country, state, page, limit string) (model.Result, error) {
-	if state == "" {
-		state = "OK"
-	}
-
-	if page == "" {
-		page = "1"
-	}
-
-	if limit == "" || limit == "0" {
-		limit = "10"
-	}
-
-	if !numberRegex.MatchString(limit) || !numberRegex.MatchString(page) {
+func (s *NumberService) FilterByState(state, page, limit string) (model.Result, error) {
+	/*if state != "OK" && state != "NOK" {
 		return model.Result{}, apperror.BadRequest
-	}
+	}*/
 
-	state = strings.ToUpper(state)
-
-	if state != "OK" && state != "NOK" {
-		return model.Result{}, apperror.BadRequest
-	}
-
-	if country == "" {
-		return model.Result{}, apperror.BadRequest
-	}
-
-	code, err := s.validator.GetCodeFromCountry(country)
+	p, lim, err := validateParams(state, page, limit)
 
 	if err != nil {
-		log.Println("Country isn't recognized by the validator at the moment")
-		return model.Result{}, apperror.NotFound
+		return model.Result{}, apperror.BadRequest
 	}
 
+	offset := 0
+
 	var (
-		data        []model.Data
+		data        = make([]model.Data, lim)
 		meta        model.Meta
 		numbers     []string
 		next        bool
-		currentPage int = 1
+		currentPage = 1
 	)
-	lim, err := strconv.Atoi(limit)
-	p, _ := strconv.Atoi(page)
-	offset := 0
-
-	if err != nil {
-		return model.Result{}, apperror.BadRequest
-	}
 
 	/*Fetching paginated data from the database based on status is a bit more complex because that data is non-contiguous. e.g:
 		1. OK
@@ -162,9 +131,15 @@ func (s *NumberService) FilterByCountryAndState(country, state, page, limit stri
 	This block runs in 0(N^2) Time
 	*/
 	for currentPage <= p {
-		data = nil
+		if len(data) < lim {
+			data = nil
+			break
+		}
+
+		data = data[lim:]
 		for len(data) < lim {
-			numbers, err = s.repository.FetchPaginatedPhoneNumbersByCode(code, offset, lim+1)
+
+			numbers, err = s.repository.FetchPaginatedPhoneNumbers(offset, lim+1)
 
 			if err != nil {
 				log.Println(err)
@@ -172,12 +147,13 @@ func (s *NumberService) FilterByCountryAndState(country, state, page, limit stri
 			}
 
 			if len(numbers) == 0 {
+				next = false
 				break
 			}
 
 			if len(numbers) == lim+1 {
 				next = true
-				numbers = numbers[:len(numbers)-1]
+				numbers = numbers[:lim]
 			} else {
 				next = false
 			}
@@ -195,13 +171,217 @@ func (s *NumberService) FilterByCountryAndState(country, state, page, limit stri
 			}
 			offset += lim
 		}
+		if len(data) > lim {
+			next = true
+		}
 		currentPage++
+	}
+
+	if len(data) == 0 {
+		meta.Next = false
+		meta.Prev = false
+	} else {
+		if len(data) > lim {
+			data = data[:lim]
+		}
+		meta.Next = next
+		if (p*lim - lim) >= lim {
+			meta.Prev = true
+		}
+	}
+
+	meta.CurrentPage = page
+
+	return model.Result{
+		Data: data,
+		Meta: meta,
+	}, nil
+
+}
+
+func (s *NumberService) FilterByCountry(country, page, limit string) (model.Result, error) {
+
+	p, lim, err := validateParams("", page, limit)
+
+	if err != nil {
+		return model.Result{}, apperror.BadRequest
+	}
+
+	code, err := s.validator.GetCodeFromCountry(country)
+
+	if err != nil {
+		return model.Result{}, apperror.NotFound
+	}
+
+	offset := lim*p - lim
+
+	var (
+		state   string
+		data    []model.Data
+		meta    model.Meta
+		numbers []string
+		next    bool
+		//currentPage = 1
+	)
+
+	for len(data) < lim {
+		numbers, err = s.repository.FetchPaginatedPhoneNumbersByCode(code, offset, lim+1)
+
+		if err != nil {
+			log.Println(err)
+			return model.Result{}, apperror.ServerError
+		}
+
+		if len(numbers) == 0 {
+			break
+		}
+
+		if len(numbers) == lim+1 {
+			next = true
+			numbers = numbers[:lim]
+		} else {
+			next = false
+		}
+
+		for _, number := range numbers {
+			country, code, number, valid := s.validator.Validate(number)
+			if valid {
+				state = "OK"
+			} else {
+				state = "NOK"
+			}
+			data = append(data, model.Data{
+				Country:     country,
+				CountryCode: code,
+				PhoneNumber: number,
+				State:       state,
+			})
+		}
+		offset += lim
 	}
 
 	meta.Next = next
 
 	if (p*lim - lim) >= lim {
 		meta.Prev = true
+	}
+
+	if len(data) == 0 {
+		meta.Next = false
+		meta.Prev = false
+	}
+
+	meta.CurrentPage = page
+
+	return model.Result{
+		Data: data,
+		Meta: meta,
+	}, nil
+}
+
+func (s *NumberService) FilterByCountryAndState(country, state, page, limit string) (model.Result, error) {
+
+	p, lim, err := validateParams(state, page, limit)
+
+	if err != nil {
+		return model.Result{}, apperror.NotFound
+	}
+
+	code, err := s.validator.GetCodeFromCountry(country)
+
+	if err != nil {
+		return model.Result{}, apperror.NotFound
+	}
+
+	state = strings.ToUpper(state)
+
+	offset := 0
+
+	var (
+		data        = make([]model.Data, lim)
+		meta        model.Meta
+		numbers     []string
+		next        bool
+		currentPage = 1
+	)
+
+	/*Fetching paginated data from the database based on status is a bit more complex because that data is non-contiguous. e.g:
+		1. OK
+		2. NOK
+		3. NOK
+		4. OK
+		5. NOK
+		6. OK
+		7. OK
+		8. NOK
+
+	Fetching page 1 of phone numbers which are nok with a limit of 3 puts the final offset for page 1 on number 5 because that's where the third NOK number is.
+
+	In order to fetch page 2, the offset will need to start from number 6 in order to prevent number 5 from entering the result set.
+
+	What this function does is to start from page 1 up to page n and try to calculate the start offset to use for page n since it's not really deterministic.
+
+	This block runs in 0(N^2) Time
+	*/
+	for currentPage <= p {
+		// Results From The Previous Page Are Lesser Than The Limit, Meaning There's No More Data On The Next Pl
+		if len(data) < lim {
+			data = nil
+			break
+		}
+
+		data = data[lim:]
+		for len(data) < lim {
+			numbers, err = s.repository.FetchPaginatedPhoneNumbersByCode(code, offset, lim+1)
+
+			if err != nil {
+				log.Println(err)
+				return model.Result{}, apperror.ServerError
+			}
+
+			if len(numbers) == 0 {
+				next = false
+				break
+			}
+
+			if len(numbers) == lim+1 {
+				next = true
+				numbers = numbers[:lim]
+			} else {
+				next = false
+			}
+
+			for _, number := range numbers {
+				country, code, number, valid := s.validator.Validate(number)
+				if (state == "OK" && valid) || (state == "NOK" && !valid) {
+					data = append(data, model.Data{
+						Country:     country,
+						CountryCode: code,
+						PhoneNumber: number,
+						State:       state,
+					})
+				}
+			}
+			offset += lim
+		}
+		if len(data) > lim {
+			next = true
+		}
+		currentPage++
+	}
+
+	if len(data) == 0 {
+		meta.Next = false
+		meta.Prev = false
+	} else {
+		if len(data) > lim {
+			data = data[:lim]
+		}
+		meta.Next = next
+
+		if (p*lim - lim) >= lim {
+			meta.Prev = true
+		}
 	}
 
 	meta.CurrentPage = page
