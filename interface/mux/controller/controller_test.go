@@ -5,9 +5,10 @@ import (
 	"assessment/interface/mux/router"
 	repoMock "assessment/repository/mock"
 	"assessment/service"
-	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,52 +16,23 @@ import (
 
 var rt *mux.Router
 
-func TestController_FetchAllPhoneNumbers(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
+type testSuite struct {
+	suite.Suite
+	ctrl *controller.Controller
+}
 
-	mockRepository := repoMock.NewMockPhoneNumberRepository(mockController)
-
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbers(0, 11).
+func (t *testSuite) SetupSuite() {
+	mockRepo := new(repoMock.PhoneNumberRepository)
+	mockRepo.On("FetchPaginatedPhoneNumbers", 0, 11).
 		Return([]string{
 			"(237) 697151594",
 			"(212) 654642448",
 			"(258) 042423566",
 			"(256) 7734127498",
-		}, nil).AnyTimes()
-	validator := service.NewValidator()
-
-	svc := service.NewNumberService(validator, mockRepository)
-
-	ctrl := controller.NewNumberController(svc)
-
-	rt = router.InitRouter(ctrl)
-
-	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1", nil)
-
-	response := executeRequest(req)
-
-	checkResponseCode(t, http.StatusOK, response.Code)
-
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc", nil)
-
-	response = executeRequest(req)
-
-	checkResponseCode(t, http.StatusOK, response.Code)
-
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=-1&page=1", nil)
-	response = executeRequest(req)
-
-	checkResponseCode(t, http.StatusBadRequest, response.Code)
-}
-
-func TestController_FilterPhoneNumbersByCountryAndState(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
-
-	mockRepository := repoMock.NewMockPhoneNumberRepository(mockController)
-
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbersByCode("237", 0, 11).
+		}, nil)
+	mockRepo.On("FetchPaginatedPhoneNumbers", 0, 6).
+		Return([]string{}, nil)
+	mockRepo.On("FetchPaginatedPhoneNumbersByCode", "237", 0, 11).
 		Return([]string{
 			"(237) 23456789",
 			"(237) 23456789",
@@ -73,39 +45,95 @@ func TestController_FilterPhoneNumbersByCountryAndState(t *testing.T) {
 			"(237) 23456789",
 			"(237) 23456789",
 			"(237) 23456789",
-		}, nil).AnyTimes()
+		}, nil)
+
+	mockRepo.On("FetchPaginatedPhoneNumbers", mock.Anything, 11).
+		Return([]string{
+			"(237) 697151594",
+			"(212) 654642448",
+			"(258) 042423566",
+			"(256) 7734127498",
+		}, nil)
 
 	validator := service.NewValidator()
 
-	svc := service.NewNumberService(validator, mockRepository)
+	svc := service.NewNumberService(validator, mockRepo)
 
-	ctrl := controller.NewNumberController(svc)
+	t.ctrl = controller.NewNumberController(svc)
 
-	rt = router.InitRouter(ctrl)
+	rt = router.InitRouter(t.ctrl)
+}
 
+func TestServiceSuite(t *testing.T) {
+	suite.Run(t, new(testSuite))
+}
+func (t *testSuite) TestController_FetchAllPhoneNumbers() {
+
+	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1", nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusOK, response.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/numbersvc", nil)
+
+	response = executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusOK, response.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=-1&page=1", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusBadRequest, response.Code)
+}
+
+func (t *testSuite) TestController_FetchPhoneNumberByCountry() {
 	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=cameroon", nil)
 
 	response := executeRequest(req)
 
-	checkResponseCode(t, http.StatusOK, response.Code)
+	checkResponseCode(t.T(), http.StatusOK, response.Code)
+}
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=OK", nil)
+func (t *testSuite) TestController_FetchPhoneNumbersByState() {
+	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=NOK", nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusOK, response.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=OK", nil)
 
 	response = executeRequest(req)
 
-	checkResponseCode(t, http.StatusNotFound, response.Code)
+	checkResponseCode(t.T(), http.StatusOK, response.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=VALID", nil)
+
+	response = executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusBadRequest, response.Code)
+
+}
+
+func (t *testSuite) TestController_FetchPhoneNumbersByCountryAndState() {
+	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=OK", nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusNotFound, response.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=NOK", nil)
+
+	response = executeRequest(req)
+
+	checkResponseCode(t.T(), http.StatusNotFound, response.Code)
 
 	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=INVALID", nil)
 
 	response = executeRequest(req)
 
-	checkResponseCode(t, http.StatusBadRequest, response.Code)
-
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=NOK", nil)
-
-	response = executeRequest(req)
-
-	checkResponseCode(t, http.StatusBadRequest, response.Code)
+	checkResponseCode(t.T(), http.StatusNotFound, response.Code)
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {

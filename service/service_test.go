@@ -1,179 +1,232 @@
 package service
 
 import (
-	"assessment/apperror"
 	repoMock "assessment/repository/mock"
 	serviceMock "assessment/service/mock"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-func TestNumberService_FetchPhoneNumbers(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
+type testSuite struct {
+	suite.Suite
+	svc *NumberService
+}
 
-	mockRepository := repoMock.NewMockPhoneNumberRepository(mockController)
-	mockValidator := serviceMock.NewMockNumberValidator(mockController)
+func (t *testSuite) SetupSuite() {
+	mockRepo := new(repoMock.PhoneNumberRepository)
+	mockValidator := new(serviceMock.NumberValidator)
 
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbers(0, 5).
-		Return([]string{
-			"(237) 697151594",
-			"(212) 654642448",
-			"(258) 042423566",
-			"(256) 7734127498",
-			"(237) 696443597",
-		}, nil)
+	mockValidator.On("Validate", "(237) 697151594").Return("Cameroon", "+237", "697151594", true)
+	mockValidator.On("Validate", "(237) 699209115").Return("Cameroon", "+237", "699209115", false)
+	mockValidator.On("GetCodeFromCountry", "cameroon").Return("237", nil)
 
-	mockValidator.EXPECT().Validate(gomock.Any()).Return("COUNTRY", "CODE", "NUMBER", true).AnyTimes()
+	// ============== Test Data For All Phone Numbers  ===================== \\
+	mockRepo.On("FetchPaginatedPhoneNumbers", 0, 6).Return([]string{
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+	}, nil)
 
-	numSvc := NewNumberService(mockValidator, mockRepository)
+	mockRepo.On("FetchPaginatedPhoneNumbers", 5, 6).Return([]string{
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+	}, nil)
 
-	result, err := numSvc.FetchPhoneNumbers("1", "4")
+	mockRepo.On("FetchPaginatedPhoneNumbers", 10, 6).Return([]string{
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+	}, nil)
 
-	require.NoError(t, err, "Expected No Errors\nGot: %v\n", err)
+	mockRepo.On("FetchPaginatedPhoneNumbers", 15, 6).Return([]string{}, nil)
+
+	mockRepo.On("FetchPaginatedPhoneNumbers", 0, 3).Return([]string{
+		"(237) 699209115",
+		"(237) 699209115",
+	}, nil)
+	// ============================================================================== \\
+
+	// =========================== Test Data For Filter By State And Filter By Country ==================== \\
+	mockRepo.On("FetchPaginatedPhoneNumbers", 0, 11).Return([]string{
+		"(237) 699209115",
+		"(237) 699209115",
+		"(237) 699209115",
+		"(237) 699209115",
+		"(237) 699209115",
+	}, nil)
+	mockRepo.On("FetchPaginatedPhoneNumbers", 10, 11).Return([]string{}, nil)
+	t.svc = NewNumberService(mockValidator, mockRepo)
+
+	// ============================================================================== \\
+
+	// ============================ Test Data For Filter By Country And State ====================== \\
+	mockRepo.On("FetchPaginatedPhoneNumbersByCode", "237", 0, 5).Return([]string{
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 697151594",
+	}, nil)
+
+	mockRepo.On("FetchPaginatedPhoneNumbersByCode", "237", 0, 4).Return([]string{
+		"(237) 697151594",
+		"(237) 699209115",
+		"(237) 697151594",
+		"(237) 699209115",
+	}, nil)
+	mockRepo.On("FetchPaginatedPhoneNumbersByCode", "237", 3, 4).Return([]string{
+		"(237) 699209115",
+		"(237) 697151594",
+		"(237) 697151594",
+		"(237) 699209115",
+	}, nil)
+
+}
+
+func TestServiceSuite(t *testing.T) {
+	suite.Run(t, new(testSuite))
+}
+
+func (t *testSuite) Test_FetchPhoneNumbers() {
+	result, err := t.svc.FetchPhoneNumbers("1", "5")
+
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
 	for _, d := range result.Data {
-		require.Equal(t, "OK", d.State)
+		require.Equal(t.T(), "OK", d.State)
 	}
 
-	require.Equal(t, 4, len(result.Data))
-	require.Equal(t, true, result.Meta.Next)
-	require.Equal(t, false, result.Meta.Prev)
+	result, err = t.svc.FetchPhoneNumbers("1", "2")
 
-	result, err = numSvc.FetchPhoneNumbers("-1", "4")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	require.Error(t, err, "Expected Error\nGot No Error")
+	for _, d := range result.Data {
+		require.Equal(t.T(), "NOK", d.State)
+	}
 
-	result, err = numSvc.FetchPhoneNumbers("1", "-4")
+	require.Equal(t.T(), 2, len(result.Data))
+	require.Equal(t.T(), false, result.Meta.Next)
+	require.Equal(t.T(), false, result.Meta.Prev)
 
-	require.Error(t, err, "Expected Error\nGot No Error")
+	result, err = t.svc.FetchPhoneNumbers("2", "5")
 
-	result, err = numSvc.FetchPhoneNumbers("1a", "4")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	require.Error(t, err, "Expected Error\nGot No Error")
+	require.Equal(t.T(), 5, len(result.Data))
+	require.Equal(t.T(), true, result.Meta.Next)
+	require.Equal(t.T(), true, result.Meta.Prev)
 
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbers(0, 5).
-		Return([]string{
-			"(237) 697151594",
-			"(212) 654642448",
-			"(258) 042423566",
-			"(256) 7734127498",
-		}, nil)
+	result, err = t.svc.FetchPhoneNumbers("3", "5")
 
-	result, err = numSvc.FetchPhoneNumbers("1", "4")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	require.Equal(t, false, result.Meta.Next)
-	require.Equal(t, false, result.Meta.Prev)
+	require.Equal(t.T(), 3, len(result.Data))
+	require.Equal(t.T(), false, result.Meta.Next)
+	require.Equal(t.T(), true, result.Meta.Prev)
 
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbers(4, 5).
-		Return([]string{
-			"(237) 697151594",
-			"(212) 654642448",
-			"(258) 042423566",
-			"(256) 7734127498",
-		}, nil)
+	result, err = t.svc.FetchPhoneNumbers("", "")
 
-	result, err = numSvc.FetchPhoneNumbers("2", "4")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	require.Equal(t, false, result.Meta.Next)
-	require.Equal(t, true, result.Meta.Prev)
+	require.Equal(t.T(), 5, len(result.Data))
+	require.Equal(t.T(), true, result.Meta.Next)
+	require.Equal(t.T(), false, result.Meta.Prev)
 
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbers(4, 5).
-		Return([]string{
-			"(237) 697151594",
-			"(212) 654642448",
-			"(258) 042423566",
-			"(256) 7734127498",
-			"(258) 042423566",
-		}, nil)
+	result, err = t.svc.FetchPhoneNumbers("4", "5")
 
-	result, err = numSvc.FetchPhoneNumbers("2", "4")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	require.Equal(t, true, result.Meta.Next)
-	require.Equal(t, true, result.Meta.Prev)
+	require.Equal(t.T(), 0, len(result.Data))
+	require.Equal(t.T(), false, result.Meta.Next)
+	require.Equal(t.T(), false, result.Meta.Prev)
+
+	result, err = t.svc.FetchPhoneNumbers("-1", "4")
+
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	result, err = t.svc.FetchPhoneNumbers("1", "-4")
+
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
 
 }
 
-func TestNumberService_FetchPhoneNumbersFilterByCountryAndState_Single_Page(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
+func (t *testSuite) Test_FilterByState() {
 
-	mockRepository := repoMock.NewMockPhoneNumberRepository(mockController)
-	mockValidator := serviceMock.NewMockNumberValidator(mockController)
+	result, err := t.svc.FilterByState("OK", "1", "5")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbersByCode("237", 0, 11).
-		Return([]string{
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-		}, nil).AnyTimes()
-
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbersByCode("237", 10, 11).Return(nil, apperror.NotFound).AnyTimes()
-
-	mockValidator.EXPECT().Validate("(237) 23456789").Return("Cameroon", "+237", "23456789", false).AnyTimes()
-	mockValidator.EXPECT().GetCodeFromCountry("Cameroon").Return("237", nil)
-
-	numSvc := NewNumberService(mockValidator, mockRepository)
-
-	results, err := numSvc.FilterByCountryAndState("Cameroon", "NOK", "1", "10")
-
-	require.NoError(t, err, "Expected No Error\nGot: %v\n", err)
-
-	for _, d := range results.Data {
-		require.Equal(t, "NOK", d.State)
+	for _, d := range result.Data {
+		require.Equal(t.T(), "OK", d.State)
 	}
 
-	require.Equal(t, 10, len(results.Data))
-	require.Equal(t, false, results.Meta.Next)
-	require.Equal(t, false, results.Meta.Prev)
+	result, err = t.svc.FilterByState("NOK", "1", "10")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
+
+	for _, d := range result.Data {
+		require.Equal(t.T(), "NOK", d.State)
+	}
+
+	require.Equal(t.T(), false, result.Meta.Next)
+	require.Equal(t.T(), false, result.Meta.Prev)
+
+	_, err = t.svc.FilterByState("INVALID", "1", "10")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	_, err = t.svc.FilterByState("VALID", "1", "10")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	_, err = t.svc.FilterByState("INVALID", "-1", "10")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	_, err = t.svc.FilterByState("INVALID", "1", "10a")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
 }
 
-func TestNumberService_FilterByCountryAndState_Multi_Page(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
+func (t *testSuite) Test_FilterByCountry() {
+	result, err := t.svc.FilterByCountry("cameroon", "1", "4")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
 
-	mockRepository := repoMock.NewMockPhoneNumberRepository(mockController)
-	mockValidator := serviceMock.NewMockNumberValidator(mockController)
-
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbersByCode("237", 0, 11).
-		Return([]string{
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-			"(237) 23456789",
-		}, nil).AnyTimes()
-
-	mockRepository.EXPECT().FetchPaginatedPhoneNumbersByCode("237", 10, 11).Return(nil, apperror.NotFound).AnyTimes()
-
-	mockValidator.EXPECT().Validate("(237) 23456789").Return("Cameroon", "+237", "23456789", false).AnyTimes()
-	mockValidator.EXPECT().GetCodeFromCountry("Cameroon").Return("237", nil)
-
-	numSvc := NewNumberService(mockValidator, mockRepository)
-
-	results, err := numSvc.FilterByCountryAndState("Cameroon", "NOK", "1", "10")
-
-	require.NoError(t, err, "Expected No Error\nGot: %v\n", err)
-
-	for _, d := range results.Data {
-		require.Equal(t, "NOK", d.State)
+	for _, d := range result.Data {
+		require.Equal(t.T(), "Cameroon", d.Country)
+		require.Equal(t.T(), "+237", d.CountryCode)
 	}
 
-	require.Equal(t, len(results.Data), 10)
-	require.Equal(t, true, results.Meta.Next)
-	require.Equal(t, false, results.Meta.Prev)
+	_, err = t.svc.FilterByCountry("cameroon", "-1", "4")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	_, err = t.svc.FilterByCountry("cameroon", "1", "4+")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+}
+
+func (t *testSuite) Test_FilterByCountryAndState() {
+	result, err := t.svc.FilterByCountryAndState("cameroon", "OK", "1", "3")
+	require.NoError(t.T(), err, "Expected: nil\nGot: %v\n", err)
+
+	for _, d := range result.Data {
+		require.Equal(t.T(), 3, len(result.Data))
+		require.Equal(t.T(), "Cameroon", d.Country)
+		require.Equal(t.T(), "+237", d.CountryCode)
+		require.Equal(t.T(), "OK", d.State)
+		require.Equal(t.T(), true, result.Meta.Next)
+	}
+
+	_, err = t.svc.FilterByCountryAndState("cameroon", "MOK", "1", "3")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	_, err = t.svc.FilterByCountryAndState("cameroon", "NOK", "-1", "3")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
+	_, err = t.svc.FilterByCountryAndState("cameroon", "NOK", "1", "jumia")
+	require.Error(t.T(), err, "Expected An Error\nGot: %v\n", err)
+
 }
