@@ -12,8 +12,22 @@ func InitRouter(controller *controller.Controller) *mux.Router {
 	pathRouter := router.PathPrefix("/numbersvc").Subrouter()
 
 	pathRouter.HandleFunc("", controller.FetchAllPhoneNumbers)
-	pathRouter.HandleFunc("", controller.FilterPhoneNumbersByCountryAndState).Queries("country", "{country}", "state", "{state}", "limit", "{limit}", "page", "{page}").Methods(http.MethodGet)
-	pathRouter.HandleFunc("", controller.FetchAllPhoneNumbers).Queries("limit", "{limit}", "page", "{page}").Methods(http.MethodGet)
 
 	return router
+}
+
+func CorsHandler(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
 }
