@@ -2,6 +2,7 @@ package controller
 
 import (
 	"assessment/interface/mux/helper"
+	"assessment/model"
 	"assessment/service"
 	"net/http"
 )
@@ -22,34 +23,29 @@ func (controller *Controller) FetchAllPhoneNumbers(w http.ResponseWriter, r *htt
 	country := queries.Get("country")
 	state := queries.Get("state")
 
-	if country == "" && state == "" {
-		result, err := controller.numberService.FetchPhoneNumbers(page, limit)
+	var (
+		result model.Result
+		err    error
+	)
 
-		if err != nil {
-			helper.ReturnFailure(w, err)
-			return
-		}
+	switch {
+	case country == "" && state == "":
+		result, err = controller.numberService.FetchPhoneNumbers(page, limit)
 
-		helper.ReturnSuccess(w, result)
-	} else {
-		result, err := controller.numberService.FilterByCountryAndState(country, state, page, limit)
+	case country != "" && state == "":
+		result, err = controller.numberService.FilterByCountry(country, page, limit)
 
-		if err != nil {
-			helper.ReturnFailure(w, err)
-			return
-		}
+	case country == "" && state != "":
+		result, err = controller.numberService.FilterByState(state, page, limit)
 
-		helper.ReturnSuccess(w, result)
+	case country != "" && page != "":
+		result, err = controller.numberService.FilterByCountryAndState(country, state, page, limit)
 	}
-}
 
-func (controller *Controller) FilterPhoneNumbersByCountryAndState(w http.ResponseWriter, r *http.Request) {
+	if err != nil {
+		helper.ReturnFailure(w, err)
+		return
+	}
 
-	/*queries := r.URL.Query()
-
-	limit := queries.Get("limit")
-	offset := queries.Get("page")
-	country := queries.Get("country")
-	state := queries.Get("page")*/
-
+	helper.ReturnSuccess(w, result)
 }
