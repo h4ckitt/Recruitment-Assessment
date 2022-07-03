@@ -36,7 +36,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Println("Starting Server On Port ", port, "...")
+	log.Println("Starting Server On Port localhost:", port, "...")
 	if err = http.ListenAndServe(":"+port, router.CorsHandler(r)); err != nil {
 		log.Fatalln(err)
 	}
