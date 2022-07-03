@@ -1,10 +1,20 @@
 version: '3.9'
 
 services:
-  app:
+  backend:
     build: ./backend
-    image: jumia_assessment:recruit
+    container_name: jumia_assessment_backend
+    image: jumia_assessment:backend
     ports:
-      - '8089:8080'
+      - '9942:9942'
     volumes:
       - ./backend/sample.db:/home/recruit/app/sample.db
+
+  frontend:
+    build: ./frontend
+    container_name: jumia_assessment_frontend
+    image: jumia_assessment:frontend
+    ports:
+      - '9943:9943'
+    volumes:
+      - ./frontend/static:/static
