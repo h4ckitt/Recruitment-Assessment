@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+//InitRouter : Initialize the mux router to be used for multiplexing requests
 func InitRouter(controller *controller.Controller) *mux.Router {
 	router := mux.NewRouter()
 
@@ -16,6 +17,7 @@ func InitRouter(controller *controller.Controller) *mux.Router {
 	return router
 }
 
+//CorsHandler : Handle Preflight CORS request
 func CorsHandler(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

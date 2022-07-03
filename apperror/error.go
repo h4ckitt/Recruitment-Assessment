@@ -2,6 +2,7 @@ package apperror
 
 import "net/http"
 
+//AppError : Custom Error type which contains http status code and message
 type AppError struct {
 	Status  int
 	Message string
@@ -10,9 +11,7 @@ type AppError struct {
 var (
 	BadRequest  = AppError{http.StatusBadRequest, "Bad request body received"}
 	ServerError = AppError{http.StatusInternalServerError, "An error occurred while processing that request"}
-	//Forbidden    = AppError{http.StatusForbidden, "Forbidden"}
-	NotFound = AppError{http.StatusNotFound, "The requested resource was not found"}
-	//Unauthorized = AppError{http.StatusUnauthorized, "Unauthorized"}
+	NotFound    = AppError{http.StatusNotFound, "The requested resource was not found"}
 )
 
 func NewError(status int, message string) AppError {

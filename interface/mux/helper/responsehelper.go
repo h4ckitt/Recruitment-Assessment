@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+//ReturnFailure : Return Failure response in the event of an error
 func ReturnFailure(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	var err2 error
@@ -29,6 +30,7 @@ func ReturnFailure(w http.ResponseWriter, err error) {
 	}
 }
 
+//ReturnSuccess : Return success response on completion of an operation
 func ReturnSuccess(w http.ResponseWriter, data model.Result) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

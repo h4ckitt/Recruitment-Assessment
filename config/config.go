@@ -8,10 +8,12 @@ import (
 
 type Configuration struct {
 	DatabaseFileName string
+	Port             string
 }
 
 var Config Configuration
 
+//LoadEnv : Load The Environment Variables Needed
 func LoadEnv() error {
 	cwd, err := os.Getwd()
 
@@ -27,6 +29,7 @@ func LoadEnv() error {
 
 	Config = Configuration{
 		DatabaseFileName: os.Getenv("DB_FILE_NAME"),
+		Port:             os.Getenv("PORT"),
 	}
 
 	return nil
