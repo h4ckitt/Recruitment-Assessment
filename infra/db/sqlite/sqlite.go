@@ -7,19 +7,17 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 )
 
 type Repo struct {
 	db *sql.DB
 }
 
+//NewSqliteClient : Creates a new client for interfacing with the db
 func NewSqliteClient() (*Repo, error) {
 	conf := config.FetchConfig()
 
 	connectionInfo := fmt.Sprintf(fmt.Sprintf("%s", conf.DatabaseFileName))
-
-	log.Println(connectionInfo)
 
 	db, err := sql.Open("sqlite3", connectionInfo)
 
@@ -30,6 +28,7 @@ func NewSqliteClient() (*Repo, error) {
 	return &Repo{db}, nil
 }
 
+//FetchPaginatedPhoneNumbers : Fetches paginated phone numbers from the database
 func (repo *Repo) FetchPaginatedPhoneNumbers(offset, limit int) ([]string, error) {
 	var (
 		result []string
@@ -58,6 +57,7 @@ func (repo *Repo) FetchPaginatedPhoneNumbers(offset, limit int) ([]string, error
 	return result, nil
 }
 
+// FetchPaginatedPhoneNumbersByCode : Fetches paginated phone numbers using the country code provided
 func (repo *Repo) FetchPaginatedPhoneNumbersByCode(code string, offset, limit int) ([]string, error) {
 	var (
 		result []string
