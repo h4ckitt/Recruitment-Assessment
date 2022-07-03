@@ -1,0 +1,9 @@
+Respository:
+ FetchPhoneNumbers
+ Fetch
+
+Model:
+ - Country
+ - State
+ - CountryCode
+ - Phone Number
