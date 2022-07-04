@@ -143,6 +143,10 @@ func (s *NumberService) FilterByState(state, page, limit string) (model.Result, 
 
 	In order to fetch page 2, the offset will need to start from number 6 to prevent number 5 from getting included the result set.
 
+	This could be made more efficient by also storing the validity (state) of the phone numbers in the db, this would allow for querying by state directly from the db
+	instead of computing it in the service.
+	Pagination will also be easier since it's certain that the db will return only the state requested not all the states available.
+
 	What this function does is start from page 1 up to page n and try to calculate the start offset to use for page n since it's not really deterministic.
 	*/
 
@@ -371,6 +375,10 @@ func (s *NumberService) FilterByCountryAndState(country, state, page, limit stri
 	In order to fetch page 2, the offset will need to start from number 6 in order to prevent number 5 from entering the result set.
 
 	What this function does is to start from page 1 up to page n and try to calculate the start offset to use for page n since it's not really deterministic.
+
+	This could be made more efficient by also storing the validity (state) of the phone numbers in the db, this would allow for querying by state directly from the db
+	instead of computing it in the service.
+	Pagination will also be easier since it's certain that the db will return only the state requested not all the states available.
 
 	This block runs in 0(N^2) Time
 	*/
