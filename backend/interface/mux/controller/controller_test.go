@@ -69,26 +69,26 @@ func TestServiceSuite(t *testing.T) {
 }
 func (t *testSuite) TestController_FetchAllPhoneNumbers() {
 
-	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1", nil)
 
 	response := executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusOK, response.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc", nil)
+	req = httptest.NewRequest(http.MethodGet, "/phone-numbers", nil)
 
 	response = executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusOK, response.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=-1&page=1", nil)
+	req = httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=-1&page=1", nil)
 	response = executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusBadRequest, response.Code)
 }
 
 func (t *testSuite) TestController_FetchPhoneNumberByCountry() {
-	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=cameroon", nil)
+	req := httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&country=cameroon", nil)
 
 	response := executeRequest(req)
 
@@ -96,19 +96,19 @@ func (t *testSuite) TestController_FetchPhoneNumberByCountry() {
 }
 
 func (t *testSuite) TestController_FetchPhoneNumbersByState() {
-	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=NOK", nil)
+	req := httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&state=NOK", nil)
 
 	response := executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusOK, response.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=OK", nil)
+	req = httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&state=OK", nil)
 
 	response = executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusOK, response.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&state=VALID", nil)
+	req = httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&state=VALID", nil)
 
 	response = executeRequest(req)
 
@@ -117,19 +117,19 @@ func (t *testSuite) TestController_FetchPhoneNumbersByState() {
 }
 
 func (t *testSuite) TestController_FetchPhoneNumbersByCountryAndState() {
-	req := httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=OK", nil)
+	req := httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&country=nigeria&state=OK", nil)
 
 	response := executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusNotFound, response.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=NOK", nil)
+	req = httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&country=nigeria&state=NOK", nil)
 
 	response = executeRequest(req)
 
 	checkResponseCode(t.T(), http.StatusNotFound, response.Code)
 
-	req = httptest.NewRequest(http.MethodGet, "/numbersvc?limit=10&page=1&country=nigeria&state=INVALID", nil)
+	req = httptest.NewRequest(http.MethodGet, "/phone-numbers?limit=10&page=1&country=nigeria&state=INVALID", nil)
 
 	response = executeRequest(req)
 
