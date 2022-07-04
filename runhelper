@@ -1,0 +1,12 @@
+#!/bin/bash
+
+CWD="$(pwd)"
+cd $CWD/backend
+
+go run . &
+
+cd $CWD/frontend
+
+go run server.go
+
+exit 0
