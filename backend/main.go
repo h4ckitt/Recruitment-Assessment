@@ -33,7 +33,7 @@ func main() {
 	port := os.Getenv("PORT")
 
 	if port == "" {
-		port = "8080"
+		port = "9942"
 	}
 
 	log.Println("Starting Server On Port localhost:", port, "...")
