@@ -15,19 +15,19 @@ a provided database.
 - The frontend listens for requests on `localhost:9943`
 
 ## Run With Makefile (Recommended)
-- Run Tests
+### - Run Tests
 ```shell
 $ make test
 ```
 This runs all the tests in packages with coverage.
 
-- Run The Project Without Building
+### - Run The Project Without Building
 ```shell
 $ make run
 ```
 This is the default target if no argument is provided to make.
 
-- Run the project using docker (Recommended)
+### - Run the project using docker (Recommended)
 ```shell
 $ make start
 ```
@@ -38,25 +38,25 @@ $ make stop
 ```
 This stops any running docker services that belong to this project.
 
-- Clean up created docker images pertaining to this assessment
+### - Clean up created docker images pertaining to this assessment
 ```shell
 $ make clean
 ```
 
 ## Run With docker-compose
-- Running the project
+### - Running the project
 ```shell
 $ docker compose up -d
 ```
 This will be build the necessary images on first run and bring up the required services in detached mode.
 
-- Stopping the project
+### - Stopping the project
 ```shell
 $ docker compose stop
 ```
 This will stop any running docker services that belong to this project
 
-- Clean Up
+### - Clean Up
 ```shell
 $ docker compose down
 $ docker image rm -f jumia_assessment:backend
@@ -64,18 +64,18 @@ $ docker image rm -f jumia_assessment:frontend
 ```
 
 ## Running Manually With Go
-- Using Run Helper
+### - Using Run Helper
 ```shell
 $ ./runhelper
 ```
 
-- Manual Startup
+### - Manual Startup
 ```shell
 $ cd backend && go build . && ./assessment &
 $ cd ../frontend && go build && ./frontend
 ```
 
-- Manual Stop And Clean Up
+### - Manual Stop And Clean Up
 ```shell
 $ ctrl + c
 $ killall assessment
