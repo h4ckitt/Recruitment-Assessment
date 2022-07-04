@@ -2,63 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
     <title>Jumia Challenge</title>
-    <style>
-        .loading-text{
-          display: none;
-        }
-
-
-        .loading-text.is-loading{
-          display: block;
-        }
-
-
-        .loading-text.is-loading::after {
-          content: "";
-          animation: loadingText 1s infinite;
-        }
-
-        @keyframes loadingText {
-          33% {
-            content: "."
-          }
-
-          66% {
-            content: ".."
-          }
-
-          100% {
-            content: "..."
-          }
-        }
-
-        .dropdown-row{
-          display: flex;
-          align-items: center;
-          column-gap: 40px;
-          margin-bottom: 60px;
-        }
-
-        .pagination-button{
-          border: 1px solid #797878;
-          background-color: transparent;
-          border-radius: 5px;
-          cursor: pointer;
-        }
-
-        .pagination-button:disabled{
-          cursor: not-allowed;
-          border: 1px solid rgba(121, 120, 120, 0.4);
-        }
-    </style>
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
     <h1>
         Phone numbers
     </h1>
     <div class="dropdown-row">
-        <select id="country">
+        <select id="country" class="dropdown-button">
             <option value="" selected>All Countries</option>
             <option value="cameroon">Cameroon</option>
             <option value="ethiopia">Ethiopia</option>
@@ -66,7 +19,7 @@
             <option value="mozambique">Mozambique</option>
             <option value="uganda">Uganda</option>
         </select>
-        <select id="phoneNumber">
+        <select id="phoneNumber" class="dropdown-button">
             <option value="" selected>All phone numbers</option>
             <option value="OK">Valid phone Numbers</option>
             <option value="NOK">Invalid phone Numbers</option>
@@ -95,10 +48,10 @@
         </tbody>
     </table>
     <button class="pagination-button" disabled id="previous-page">
-        Prev
+      &#8249; Prev
     </button>
     <button class="pagination-button" disabled id="next-page">
-        Next
+      Next &#8250;
     </button>
     <script>
         const countrySelect = document.getElementById('country');
@@ -134,7 +87,7 @@
           searchParams.set("page", String(currentPage));
 
           //Replace google.com with API URL
-          const response = await fetch(`http://localhost:9942/numbersvc?${searchParams.toString()}`);
+          const response = await fetch(`http://localhost:9942/phone-numbers?${searchParams.toString()}`);
 
           const data = await response.json();
 
