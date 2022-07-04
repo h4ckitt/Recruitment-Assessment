@@ -10,7 +10,7 @@ import (
 func InitRouter(controller *controller.Controller) *mux.Router {
 	router := mux.NewRouter()
 
-	pathRouter := router.PathPrefix("/numbersvc").Subrouter()
+	pathRouter := router.PathPrefix("/phone-numbers").Subrouter()
 
 	pathRouter.HandleFunc("", controller.FetchAllPhoneNumbers)
 
