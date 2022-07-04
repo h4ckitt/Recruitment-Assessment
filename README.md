@@ -27,7 +27,7 @@ $ make run
 ```
 This is the default target if no argument is provided to make.
 
-### - Run the project using docker (Recommended)
+### - Run the project using docker
 ```shell
 $ make start
 ```
